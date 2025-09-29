@@ -1,0 +1,10 @@
+fastapi==0.104.1
+uvicorn==0.24.0
+python-multipart==0.0.6
+PyPDF2==3.0.1
+sentence-transformers==2.2.2
+lancedb==0.3.1
+pymysql==1.1.0
+openai==0.28.0
+numpy==1.24.3
+cryptography==41.0.7
