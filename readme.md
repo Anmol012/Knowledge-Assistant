@@ -1,6 +1,6 @@
 # RAG Chat with PDF Application
 
-A containerized RAG (Retrieval Augmented Generation) application that allows users to upload PDF documents and chat with their content using FastAPI, LanceDB, and MySQL.
+A containerized RAG (Retrieval Augmented Generation) application that allows users to upload PDF documents and chat with their content using FastAPI, LanceDB, MySQL, and Ollama.
 
 ## Features
 
@@ -8,7 +8,7 @@ A containerized RAG (Retrieval Augmented Generation) application that allows use
 - Extract and chunk text content
 - Generate embeddings using SentenceTransformers
 - Store vectors in LanceDB
-- Chat with document content using OpenAI GPT
+- Chat with document content using Ollama with Gemma 2B model
 - Store chat history in MySQL
 - Fully containerized with Docker
 
@@ -17,22 +17,27 @@ A containerized RAG (Retrieval Augmented Generation) application that allows use
 - **FastAPI**: Web framework for API endpoints
 - **LanceDB**: Vector database for storing document embeddings
 - **MySQL**: Relational database for metadata and chat history
+- **Ollama**: Local LLM inference with Gemma 2B model
 - **SentenceTransformers**: For generating embeddings
-- **OpenAI GPT**: For generating responses
 
 ## Setup
 
 1. Clone the repository and navigate to the project directory
 
-2. Create a `.env` file with your OpenAI API key:
-```
-OPENAI_API_KEY=your-openai-api-key-here
-```
-
-3. Build and run with Docker Compose:
+2. Build and run with Docker Compose:
 ```bash
 docker-compose up --build
 ```
+
+The first startup will take longer as it downloads the Gemma 2B model (~1.4GB).
+
+## Available Models
+
+You can change the model in the `.env` file:
+- `gemma:2b` - Google's Gemma 2B (default, ~1.4GB)
+- `phi3:mini` - Microsoft's Phi-3 Mini (~2.3GB)
+- `qwen2:1.5b` - Qwen2 1.5B (~934MB)
+- `tinyllama:1.1b` - TinyLlama 1.1B (~637MB)
 
 ## API Endpoints
 
@@ -70,6 +75,7 @@ GET /health
 ```bash
 docker-compose up
 ```
+Wait for the model to be downloaded and loaded.
 
 2. Upload a PDF:
 ```python
@@ -94,7 +100,9 @@ print(response.json()['response'])
 ## Configuration
 
 Environment variables:
-- `OPENAI_API_KEY`: Your OpenAI API key
+- `OLLAMA_MODEL`: Model to use (default: gemma:2b)
+- `OLLAMA_HOST`: Ollama host (default: ollama)
+- `OLLAMA_PORT`: Ollama port (default: 11434)
 - `MYSQL_HOST`: MySQL host (default: mysql)
 - `MYSQL_PORT`: MySQL port (default: 3306)
 - `MYSQL_USER`: MySQL user (default: root)
@@ -106,6 +114,13 @@ Environment variables:
 
 - MySQL data is persisted in the `mysql_data` Docker volume
 - LanceDB data is persisted in the `lancedb_data` Docker volume
+- Ollama models are persisted in the `ollama_data` Docker volume
+
+## Performance Notes
+
+- Gemma 2B model requires ~2GB RAM for inference
+- First response may be slower as the model loads
+- Subsequent responses are faster due to model caching
 
 ## Development
 
@@ -116,9 +131,21 @@ To run in development mode:
 pip install -r requirements.txt
 ```
 
-2. Set environment variables and run:
+2. Start Ollama separately and pull the model:
+```bash
+ollama serve &
+ollama pull gemma:2b
+```
+
+3. Set environment variables and run:
 ```bash
 python main.py
 ```
 
 The API will be available at `http://localhost:8000` with automatic documentation at `http://localhost:8000/docs`.
+
+## Troubleshooting
+
+- If Ollama fails to start, ensure you have enough disk space for the model
+- For ARM64 systems (Apple Silicon), Ollama will automatically use optimized versions
+- Check container logs: `docker-compose logs ollama` or `docker-compose logs app`

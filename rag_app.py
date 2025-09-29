@@ -8,7 +8,7 @@ import pymysql
 import lancedb
 import PyPDF2
 from sentence_transformers import SentenceTransformer
-import openai
+import httpx
 from datetime import datetime
 import numpy as np
 from io import BytesIO
@@ -41,7 +41,9 @@ MYSQL_CONFIG = {
 }
 
 LANCEDB_PATH = os.getenv('LANCEDB_PATH', '/app/lancedb')
-openai.api_key = os.getenv('OPENAI_API_KEY', 'your-openai-key')
+OLLAMA_HOST = os.getenv('OLLAMA_HOST', 'ollama')
+OLLAMA_PORT = os.getenv('OLLAMA_PORT', '11434')
+OLLAMA_MODEL = os.getenv('OLLAMA_MODEL', 'gemma:2b')
 
 model = SentenceTransformer('all-MiniLM-L6-v2')
 
@@ -92,6 +94,29 @@ def chunk_text(text, chunk_size=1000, overlap=200):
 
 def get_embedding(text):
     return model.encode(text).tolist()
+
+async def generate_response(prompt):
+    ollama_url = f"http://{OLLAMA_HOST}:{OLLAMA_PORT}/api/generate"
+    payload = {
+        "model": OLLAMA_MODEL,
+        "prompt": prompt,
+        "stream": False,
+        "options": {
+            "temperature": 0.7,
+            "max_tokens": 500
+        }
+    }
+    
+    try:
+        async with httpx.AsyncClient(timeout=60.0) as client:
+            response = await client.post(ollama_url, json=payload)
+            if response.status_code == 200:
+                result = response.json()
+                return result.get("response", "Sorry, I couldn't generate a response.")
+            else:
+                return f"Error from Ollama: {response.status_code}"
+    except Exception as e:
+        return f"Failed to connect to Ollama: {str(e)}"
 
 @app.on_event("startup")
 async def startup_event():
@@ -168,25 +193,16 @@ async def chat(request: ChatRequest):
     
     context = "\n".join([result["text"] for result in results])
     
-    prompt = f"""
-    Context from the uploaded document:
-    {context}
+    prompt = f"""Based on the following context from a document, please answer the user's question accurately and concisely.
+
+Context:
+{context}
+
+Question: {request.message}
+
+Answer:"""
     
-    User question: {request.message}
-    
-    Please provide a helpful answer based on the context above. If the question cannot be answered from the context, please say so.
-    """
-    
-    try:
-        response = openai.ChatCompletion.create(
-            model="gpt-3.5-turbo",
-            messages=[{"role": "user", "content": prompt}],
-            max_tokens=500,
-            temperature=0.7
-        )
-        answer = response.choices[0].message.content
-    except:
-        answer = "Sorry, I couldn't generate a response. Please check your OpenAI API configuration."
+    answer = await generate_response(prompt)
     
     conn = get_mysql_connection()
     cursor = conn.cursor()
