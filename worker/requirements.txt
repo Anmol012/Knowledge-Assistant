@@ -1,0 +1,11 @@
+celery==5.3.6
+redis==5.0.1
+SQLAlchemy==2.0.25
+pymysql==1.1.0
+pydantic==2.6.1
+pydantic-settings==2.2.1
+PyPDF2==3.0.1
+sentence-transformers==3.0.1
+huggingface-hub==0.20.3
+qdrant-client==1.9.1
+numpy==1.26.4

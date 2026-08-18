@@ -1,0 +1,24 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+
+# Node
+node_modules/
+dist/
+
+# Environment / secrets
+.env
+.env.local
+
+# Docker volumes / local data
+mysql_data/
+uploads/
+lancedb/
+
+# Misc
+*.log
+.DS_Store
+sample.pdf
